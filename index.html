@@ -187,25 +187,34 @@ $("retryBtn").onclick=()=>{
   show($("captureBtn"),webcamStream?true:false);show($("uploadLabel"));show($("analyzeBtn"),false);show($("retryBtn"),false);show($("resultContainer"),false);
   capturedImage=null;if(usingUpload){$("fileInput").value="";usingUpload=false;}
 };
-window.addEventListener('beforeunload',()=>{if(webcamStream)webcamStream.getTracks().forEach(track=>track.stop());});
+window.addEventListener('beforeunload', ()=>{
+  if(webcamStream) webcamStream.getTracks().forEach(track=>track.stop());
+});
 
-// 저장: 텍스트 없이 대표이미지로 완전히 덮어씌움
+
+// 저장: 텍스트 없이, 미리보기 사진과 대표이미지 위치/크기를 "텍스트 카드 때와 동일"하게
 $("saveResultBtn").onclick=()=>{
   const cardW=1181,cardH=1772,cardCanvas=document.createElement('canvas');
   cardCanvas.width=cardW;cardCanvas.height=cardH;
   const ctx=cardCanvas.getContext('2d');
-  ctx.fillStyle="#fff";ctx.fillRect(0,0,cardW,cardH);
+  ctx.fillStyle="#fff";
+  ctx.fillRect(0,0,cardW,cardH);
 
-  // 1. 사용자 사진을 카드 전체에 그림
-  const img2 = new window.Image();
+  // (텍스트 있었던 카드 저장 코드와 동일한 위치/크기)
+  const img2 = new Image();
   img2.src = document.getElementById('canvas').toDataURL('image/png');
   img2.onload = function(){
-    let imgH = cardH, imgW = img2.width * (cardH / img2.height);
-    if(imgW > cardW){imgW = cardW; imgH = img2.height * (cardW / img2.width);}
-    const imgX = Math.round((cardW-imgW)/2), imgY = Math.round((cardH-imgH)/2);
+    let imgH = Math.round(cardH*0.45);
+    let imgW = Math.round(img2.width * (imgH / img2.height));
+    if(imgW > cardW-80){
+      imgW = cardW-80;
+      imgH = Math.round(img2.height * (imgW / img2.width));
+    }
+    const imgX = Math.round((cardW-imgW)/2);
+    const imgY = 60;
     ctx.drawImage(img2, imgX, imgY, imgW, imgH);
 
-    // 2. 대표 미생물 이미지를 카드 전체에 완전히 불투명하게 덮어씌움
+    // 대표 미생물 이미지를 같은 위치/크기로 완전히 겹침
     let orgName = document.getElementById('resultMicroorganism').textContent.replace(/[^가-힣]/g,"")||"";
     let imgUrl = orgName ? "img/"+orgName+".jpg" : null;
     if(imgUrl){
@@ -215,9 +224,7 @@ $("saveResultBtn").onclick=()=>{
         ctx.drawImage(repImg, imgX, imgY, imgW, imgH);
         saveCard();
       };
-      repImg.onerror = function(){
-        saveCard();
-      };
+      repImg.onerror = function(){ saveCard(); };
       repImg.src = imgUrl;
     } else {
       saveCard();
