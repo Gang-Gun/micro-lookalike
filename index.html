@@ -191,7 +191,7 @@ window.addEventListener('beforeunload', ()=>{
   if(webcamStream) webcamStream.getTracks().forEach(track=>track.stop());
 });
 
-// 저장: 대표 미생물 이미지를 카드 세로 전체에 꽉차게(가로 비율 유지, 중앙정렬), 텍스트 없음
+// 저장: 미리보기(분석) 사진 + 대표 미생물 이미지를 카드 전체에 세로로 겹침
 $("saveResultBtn").onclick=()=>{
   const cardW=1181, cardH=1772, cardCanvas=document.createElement('canvas');
   cardCanvas.width=cardW; cardCanvas.height=cardH;
@@ -199,30 +199,45 @@ $("saveResultBtn").onclick=()=>{
   ctx.fillStyle="#fff";
   ctx.fillRect(0,0,cardW,cardH);
 
-  // 대표 미생물 이미지를 카드 세로 전체에 꽉차게, 중앙정렬
-  let orgName = document.getElementById('resultMicroorganism').textContent.replace(/[^가-힣]/g,"")||"";
-  let imgUrl = orgName ? "img/"+orgName+".jpg" : null;
-  if(imgUrl){
-    let repImg = new Image();
-    repImg.crossOrigin="anonymous";
-    repImg.onload = function(){
-      let repH = cardH;
-      let repW = repImg.width * (repH / repImg.height);
-      let repX = Math.round((cardW - repW) / 2), repY = 0;
-      ctx.drawImage(repImg, repX, repY, repW, repH);
-      saveCard();
-    };
-    repImg.onerror = function(){ saveCard(); };
-    repImg.src = imgUrl;
-  } else {
-    saveCard();
-  }
+  // 1. 미리보기(분석) 사진(카드 상단 일부)
+  const img2 = new Image();
+  img2.src = document.getElementById('canvas').toDataURL('image/png');
+  img2.onload = function(){
+    let imgH = Math.round(cardH*0.45);
+    let imgW = Math.round(img2.width * (imgH / img2.height));
+    if(imgW > cardW-80){
+      imgW = cardW-80;
+      imgH = Math.round(img2.height * (imgW / img2.width));
+    }
+    const imgX = Math.round((cardW-imgW)/2);
+    const imgY = 60;
+    ctx.drawImage(img2, imgX, imgY, imgW, imgH);
 
-  function saveCard(){
-    cardCanvas.toBlob(function(blob){
-      const a=document.createElement('a');
-      a.href=URL.createObjectURL(blob);a.download='analysis_card.png';a.click();URL.revokeObjectURL(a.href);
-    },'image/png');
+    // 2. 대표 미생물 이미지를 카드 전체 세로에 꽉차게(중앙정렬)
+    let orgName = document.getElementById('resultMicroorganism').textContent.replace(/[^가-힣]/g,"")||"";
+    let imgUrl = orgName ? "img/"+orgName+".jpg" : null;
+    if(imgUrl){
+      let repImg = new Image();
+      repImg.crossOrigin="anonymous";
+      repImg.onload = function(){
+        let repH = cardH;
+        let repW = repImg.width * (repH / repImg.height);
+        let repX = Math.round((cardW - repW) / 2), repY = 0;
+        ctx.drawImage(repImg, repX, repY, repW, repH);
+        saveCard();
+      };
+      repImg.onerror = function(){ saveCard(); };
+      repImg.src = imgUrl;
+    } else {
+      saveCard();
+    }
+
+    function saveCard(){
+      cardCanvas.toBlob(function(blob){
+        const a=document.createElement('a');
+        a.href=URL.createObjectURL(blob);a.download='analysis_card.png';a.click();URL.revokeObjectURL(a.href);
+      },'image/png');
+    }
   }
 };
 </script>
