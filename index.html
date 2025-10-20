@@ -146,7 +146,14 @@ $("cameraSelect").onchange=async()=>{await startCamera($("cameraSelect").value);
 $("captureBtn").onclick=()=>{
   usingUpload=false;
   $("canvas").width=640;$("canvas").height=480;
-  $("canvas").getContext('2d').drawImage($("webcam"),0,0,640,480);
+  // 중앙 crop, 비율 유지(세로든 가로든 상관없이 꽉차게)
+  const ctx=$("canvas").getContext('2d');
+  const video=$("webcam");
+  const videoW=video.videoWidth,videoH=video.videoHeight;
+  let sx=0,sy=0,sw=videoW,sh=videoH;
+  const targetW=640,targetH=480,targetRatio=targetW/targetH,videoRatio=videoW/videoH;
+  if(videoRatio>targetRatio){sw=videoH*targetRatio;sx=(videoW-sw)/2;}else{sh=videoW/targetRatio;sy=(videoH-sh)/2;}
+  ctx.drawImage(video,sx,sy,sw,sh,0,0,targetW,targetH);
   show($("webcam"),false);show($("canvas"));show($("captureBtn"),false);show($("uploadLabel"),false);show($("analyzeBtn"));show($("retryBtn"));show($("resultContainer"),false);
   $("canvas").toBlob(blob=>capturedImage=blob);
 };
@@ -155,13 +162,14 @@ $("fileInput").onchange=e=>{
   const file=e.target.files[0];if(!file)return;
   const img=new Image();
   img.onload=()=>{
-    let w=img.width,h=img.height;w/h>4/3?w=h*4/3:h=w*3/4;
-    if(w>640){h=Math.round(h*(640/w));w=640;}
-    if(h>480){w=Math.round(w*(480/h));h=480;}
     $("canvas").width=640;$("canvas").height=480;
     let ctx=$("canvas").getContext('2d');
-    ctx.fillStyle="#222";ctx.fillRect(0,0,640,480);
-    ctx.drawImage(img,(640-w)/2,(480-h)/2,w,h);
+    // 중앙 crop, 비율 유지
+    const imgW=img.width,imgH=img.height;
+    let sx=0,sy=0,sw=imgW,sh=imgH;
+    const targetW=640,targetH=480,targetRatio=targetW/targetH,imgRatio=imgW/imgH;
+    if(imgRatio>targetRatio){sw=imgH*targetRatio;sx=(imgW-sw)/2;}else{sh=imgW/targetRatio;sy=(imgH-sh)/2;}
+    ctx.drawImage(img,sx,sy,sw,sh,0,0,targetW,targetH);
     show($("webcam"),false);show($("canvas"));show($("captureBtn"),false);show($("uploadLabel"),false);show($("analyzeBtn"));show($("retryBtn"));show($("resultContainer"),false);
     $("canvas").toBlob(blob=>capturedImage=blob);
   };
