@@ -45,11 +45,6 @@
     .spinner{width:40px;height:40px;border:4px solid #e5e7eb;border-top:4px solid #667eea;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:10px;}
     @keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
     @media(max-width:768px){.main-title{font-size:2rem;}.container{padding:10px;}.start-screen,.main-screen{margin:10px;padding:20px;}.controls{flex-direction:column;align-items:center;}.btn{width:200px;}}
-    /* 분석 결과 이미지 겹침 */
-    #resultImages { position:relative; width:100%; aspect-ratio:4/3; max-width:430px; margin:0 auto 18px; overflow:hidden; }
-    #resultImages img { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; opacity:1; }
-    #microImg { z-index:2; }
-    #userImg { z-index:3; }
   </style>
 </head>
 <body>
@@ -86,11 +81,6 @@
     <div class="loading" id="loading"><div class="spinner"></div><p>AI가 분석 중입니다...</p></div>
     <div id="resultContainer" class="result-container">
       <h3 class="result-title">분석 결과</h3>
-      <!-- 겹쳐 보이는 이미지 영역 -->
-      <div id="resultImages">
-        <img id="microImg" alt="대표 미생물 이미지">
-        <img id="userImg" alt="사용자 입력 이미지">
-      </div>
       <div id="resultMicroorganism" class="result-microorganism"></div>
       <div id="resultDescription" class="result-description"></div>
       <div class="confidence-bar"><div id="confidenceFill" class="confidence-fill"></div></div>
@@ -185,8 +175,12 @@ $("analyzeBtn").onclick=async()=>{
   if(!predictions||predictions.length==0){alert("예측 결과 없음");show($("loading"),false);$("analyzeBtn").disabled=false;return;}
   predictions.sort((a,b)=>b.probability-a.probability);
   let top=predictions[0],key=top.className,confidence=Math.round(top.probability*100);
-  showResult(key,confidence);
-  show($("loading"),false);$("analyzeBtn").disabled=false;
+  const org=microorganisms[key];
+  $("resultMicroorganism").innerHTML=org?`${org.icon} <strong>${org.name}</strong>`:key;
+  $("resultDescription").textContent=org?org.description:'';
+  $("confidenceFill").style.width=`${confidence}%`;
+  $("confidenceText").textContent=`신뢰도: ${confidence}%`;
+  show($("resultContainer"));show($("loading"),false);$("analyzeBtn").disabled=false;
 };
 $("retryBtn").onclick=()=>{
   show($("webcam"),webcamStream&&!usingUpload);show($("canvas"),false);
@@ -195,69 +189,41 @@ $("retryBtn").onclick=()=>{
 };
 window.addEventListener('beforeunload',()=>{if(webcamStream)webcamStream.getTracks().forEach(track=>track.stop());});
 
-// === 분석 결과 화면에서 이미지 겹치기 기능 구현 ===
-function showResult(organismKey, confidence) {
-  const org = microorganisms[organismKey];
-  $("resultMicroorganism").innerHTML = org ? `${org.icon} <strong>${org.name}</strong>` : organismKey;
-  $("resultDescription").textContent = org ? org.description : '';
-  $("confidenceFill").style.width = `${confidence}%`;
-  $("confidenceText").textContent = `신뢰도: ${confidence}%`;
-  show($("resultContainer"));
-
-  // 대표 이미지 자동 적용
-  let orgImgUrl = organismKey ? `img/${organismKey}.jpg` : '';
-  $("microImg").src = orgImgUrl;
-  $("microImg").alt = organismKey + " 대표이미지";
-
-  // 사용자가 찍은(업로드한) 사진
-  $("userImg").src = $("canvas").toDataURL('image/png');
-  $("userImg").alt = "사용자 입력 이미지";
-}
-
-// --- 저장하기(기존과 동일) ---
+// 저장: 텍스트 없이 대표이미지로 완전히 덮어씌움
 $("saveResultBtn").onclick=()=>{
   const cardW=1181,cardH=1772,cardCanvas=document.createElement('canvas');
   cardCanvas.width=cardW;cardCanvas.height=cardH;
   const ctx=cardCanvas.getContext('2d');
   ctx.fillStyle="#fff";ctx.fillRect(0,0,cardW,cardH);
-  let orgName=document.getElementById('resultMicroorganism').textContent.replace(/[^가-힣]/g,"")||"";
-  let drawBelow=60,repDone=false;
-  if(orgName){
-    let imgUrl = "img/"+orgName+".jpg";
-    let img=new Image();
-    img.crossOrigin="anonymous";
-    img.onload=function(){
-      ctx.save();
-      let scale=Math.max(cardW/img.width,cardW/(img.height*0.34));
-      let dW=cardW,dH=img.height*scale;
-      if(dH>cardH*0.34)dH=cardH*0.34;
-      ctx.drawImage(img,0,0,dW,dH);
-      ctx.restore();
-      drawBelow=dH+30;
-      drawAnalysis();
-    };
-    img.onerror=function(){drawAnalysis();};
-    img.src=imgUrl;
-    repDone=true;
-  }
-  if(!repDone) drawAnalysis();
-  function drawAnalysis(){
-    const img2=new window.Image();
-    img2.src=document.getElementById('canvas').toDataURL('image/png');
-    img2.onload=function(){
-      let imgH=Math.round(cardH*0.45),imgW=Math.round(img2.width*(imgH/img2.height));
-      if(imgW>cardW-80){imgW=cardW-80;imgH=Math.round(img2.height*(imgW/img2.width));}
-      const imgX=Math.round((cardW-imgW)/2),imgY=drawBelow;
-      ctx.drawImage(img2,imgX,imgY,imgW,imgH);
-      const name=document.getElementById('resultMicroorganism').textContent||'',
-        conf=document.getElementById('confidenceText').textContent||'',
-        desc=document.getElementById('resultDescription').textContent||'';
-      ctx.font="bold 54px 'Noto Sans KR',Arial";ctx.fillStyle="#222";ctx.textAlign="center";
-      ctx.fillText(name,cardW/2,imgY+imgH+80);
-      ctx.font="bold 40px 'Noto Sans KR',Arial";ctx.fillStyle="#4c1d95";
-      ctx.fillText(conf,cardW/2,imgY+imgH+150);
-      ctx.font="32px 'Noto Sans KR',Arial";ctx.fillStyle="#444";
-      wrapText(ctx,desc,cardW/2,imgY+imgH+220,cardW-100,46);
+
+  // 1. 사용자 사진을 카드 전체에 그림
+  const img2 = new window.Image();
+  img2.src = document.getElementById('canvas').toDataURL('image/png');
+  img2.onload = function(){
+    let imgH = cardH, imgW = img2.width * (cardH / img2.height);
+    if(imgW > cardW){imgW = cardW; imgH = img2.height * (cardW / img2.width);}
+    const imgX = Math.round((cardW-imgW)/2), imgY = Math.round((cardH-imgH)/2);
+    ctx.drawImage(img2, imgX, imgY, imgW, imgH);
+
+    // 2. 대표 미생물 이미지를 카드 전체에 완전히 불투명하게 덮어씌움
+    let orgName = document.getElementById('resultMicroorganism').textContent.replace(/[^가-힣]/g,"")||"";
+    let imgUrl = orgName ? "img/"+orgName+".jpg" : null;
+    if(imgUrl){
+      let repImg = new Image();
+      repImg.crossOrigin="anonymous";
+      repImg.onload = function(){
+        ctx.drawImage(repImg, imgX, imgY, imgW, imgH);
+        saveCard();
+      };
+      repImg.onerror = function(){
+        saveCard();
+      };
+      repImg.src = imgUrl;
+    } else {
+      saveCard();
+    }
+
+    function saveCard(){
       cardCanvas.toBlob(function(blob){
         const a=document.createElement('a');
         a.href=URL.createObjectURL(blob);a.download='analysis_card.png';a.click();URL.revokeObjectURL(a.href);
@@ -265,15 +231,6 @@ $("saveResultBtn").onclick=()=>{
     }
   }
 };
-function wrapText(ctx,text,x,y,maxWidth,lineHeight){
-  if(!text)return;const words=text.split(' ');let line='';
-  for(let n=0;n<words.length;n++){
-    let testLine=line+words[n]+' ';let metrics=ctx.measureText(testLine);
-    if(metrics.width>maxWidth&&n>0){ctx.fillText(line,x,y);line=words[n]+' ';y+=lineHeight;}
-    else line=testLine;
-  }
-  ctx.fillText(line,x,y);
-}
 </script>
 </body>
 </html>
