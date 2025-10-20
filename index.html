@@ -45,6 +45,11 @@
     .spinner{width:40px;height:40px;border:4px solid #e5e7eb;border-top:4px solid #667eea;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:10px;}
     @keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
     @media(max-width:768px){.main-title{font-size:2rem;}.container{padding:10px;}.start-screen,.main-screen{margin:10px;padding:20px;}.controls{flex-direction:column;align-items:center;}.btn{width:200px;}}
+    /* 분석 결과 이미지 겹침 */
+    #resultImages { position:relative; width:100%; aspect-ratio:4/3; max-width:430px; margin:0 auto 18px; overflow:hidden; }
+    #resultImages img { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; opacity:1; }
+    #microImg { z-index:2; }
+    #userImg { z-index:3; }
   </style>
 </head>
 <body>
@@ -81,6 +86,11 @@
     <div class="loading" id="loading"><div class="spinner"></div><p>AI가 분석 중입니다...</p></div>
     <div id="resultContainer" class="result-container">
       <h3 class="result-title">분석 결과</h3>
+      <!-- 겹쳐 보이는 이미지 영역 -->
+      <div id="resultImages">
+        <img id="microImg" alt="대표 미생물 이미지">
+        <img id="userImg" alt="사용자 입력 이미지">
+      </div>
       <div id="resultMicroorganism" class="result-microorganism"></div>
       <div id="resultDescription" class="result-description"></div>
       <div class="confidence-bar"><div id="confidenceFill" class="confidence-fill"></div></div>
@@ -175,12 +185,8 @@ $("analyzeBtn").onclick=async()=>{
   if(!predictions||predictions.length==0){alert("예측 결과 없음");show($("loading"),false);$("analyzeBtn").disabled=false;return;}
   predictions.sort((a,b)=>b.probability-a.probability);
   let top=predictions[0],key=top.className,confidence=Math.round(top.probability*100);
-  const org=microorganisms[key];
-  $("resultMicroorganism").innerHTML=org?`${org.icon} <strong>${org.name}</strong>`:key;
-  $("resultDescription").textContent=org?org.description:'';
-  $("confidenceFill").style.width=`${confidence}%`;
-  $("confidenceText").textContent=`신뢰도: ${confidence}%`;
-  show($("resultContainer"));show($("loading"),false);$("analyzeBtn").disabled=false;
+  showResult(key,confidence);
+  show($("loading"),false);$("analyzeBtn").disabled=false;
 };
 $("retryBtn").onclick=()=>{
   show($("webcam"),webcamStream&&!usingUpload);show($("canvas"),false);
@@ -188,6 +194,27 @@ $("retryBtn").onclick=()=>{
   capturedImage=null;if(usingUpload){$("fileInput").value="";usingUpload=false;}
 };
 window.addEventListener('beforeunload',()=>{if(webcamStream)webcamStream.getTracks().forEach(track=>track.stop());});
+
+// === 분석 결과 화면에서 이미지 겹치기 기능 구현 ===
+function showResult(organismKey, confidence) {
+  const org = microorganisms[organismKey];
+  $("resultMicroorganism").innerHTML = org ? `${org.icon} <strong>${org.name}</strong>` : organismKey;
+  $("resultDescription").textContent = org ? org.description : '';
+  $("confidenceFill").style.width = `${confidence}%`;
+  $("confidenceText").textContent = `신뢰도: ${confidence}%`;
+  show($("resultContainer"));
+
+  // 대표 이미지 자동 적용
+  let orgImgUrl = organismKey ? `img/${organismKey}.jpg` : '';
+  $("microImg").src = orgImgUrl;
+  $("microImg").alt = organismKey + " 대표이미지";
+
+  // 사용자가 찍은(업로드한) 사진
+  $("userImg").src = $("canvas").toDataURL('image/png');
+  $("userImg").alt = "사용자 입력 이미지";
+}
+
+// --- 저장하기(기존과 동일) ---
 $("saveResultBtn").onclick=()=>{
   const cardW=1181,cardH=1772,cardCanvas=document.createElement('canvas');
   cardCanvas.width=cardW;cardCanvas.height=cardH;
