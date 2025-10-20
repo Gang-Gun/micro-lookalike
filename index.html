@@ -221,7 +221,10 @@ $("saveResultBtn").onclick=()=>{
       let repImg = new Image();
       repImg.crossOrigin="anonymous";
       repImg.onload = function(){
-        ctx.drawImage(repImg, imgX, imgY, imgW, imgH);
+        let repH = cardH;
+let repW = repImg.width * (repH / repImg.height);
+let repX = Math.round((cardW - repW) / 2), repY = 0;
+ctx.drawImage(repImg, repX, repY, repW, repH);
         saveCard();
       };
       repImg.onerror = function(){ saveCard(); };
@@ -241,3 +244,6 @@ $("saveResultBtn").onclick=()=>{
 </script>
 </body>
 </html>
+
+</html>
+
