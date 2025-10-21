@@ -2,49 +2,95 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=900, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
   <title>미생물 닮은꼴 찾기</title>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.4/dist/teachablemachine-image.min.js"></script>
   <style>
-    body {box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;margin:0;padding:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;color:#333;}
-    .container {max-width:900px;margin:0 auto;padding:20px;text-align:center;}
-    .start-screen, .main-screen {background:rgba(255,255,255,.95);border-radius:20px;box-shadow:0 20px 40px rgba(0,0,0,.1);margin:20px;}
-    .start-screen {display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;padding:40px;}
-    .main-title {font-size:2.5rem;font-weight:700;color:#4c1d95;margin-bottom:20px;text-shadow:2px 2px 4px rgba(0,0,0,.1);}
-    .subtitle {font-size:1.2rem;color:#6b7280;margin-bottom:40px;line-height:1.6;}
-    .microorganism-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:20px;margin:30px 0;max-width:600px;}
-    .microorganism-card {background:white;border-radius:15px;padding:20px;box-shadow:0 8px 16px rgba(0,0,0,.1);transition:.3s;}
+    html,body {height:100%;margin:0;padding:0;box-sizing:border-box;}
+    body {font-family:'Noto Sans KR',sans-serif;margin:0;padding:0;
+      background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+      min-height:100vh;min-height:100svh;color:#333;}
+    .container {max-width:900px;margin:0 auto;padding:2vw 1vw;text-align:center;}
+    .start-screen,.main-screen {
+      background:rgba(255,255,255,.95);
+      border-radius:3vw;
+      box-shadow:0 2vw 4vw rgba(0,0,0,.08);
+      margin:4vw 0; 
+      padding:3vw 2vw;
+      transition:padding .2s;
+    }
+    .main-title {font-size:clamp(1.5rem,4vw,2.7rem);font-weight:700;color:#4c1d95;margin-bottom:2vw;text-shadow:2px 2px 4px rgba(0,0,0,.08);}
+    .subtitle {font-size:clamp(1rem,2.2vw,1.2rem);color:#6b7280;margin-bottom:3vw;line-height:1.5;}
+    .microorganism-grid {
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+      gap:2vw; 
+      margin:2vw auto 3vw auto; 
+      max-width:600px;
+    }
+    .microorganism-card {
+      background:white;border-radius:2vw;padding:2vw;
+      box-shadow:0 .7vw 1.5vw rgba(0,0,0,.07);transition:.3s;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+    }
     .microorganism-card:hover {transform:translateY(-5px);}
-    .microorganism-icon {width:48px;height:48px;object-fit:cover;vertical-align:middle;margin-bottom:10px;border-radius:10px;}
-    .microorganism-name {font-size:.9rem;font-weight:600;color:#4c1d95;}
-    .main-screen {display:none;padding:30px;}
-    .camera-select {margin-bottom:18px;display:flex;justify-content:center;align-items:center;gap:10px;}
-    .camera-select label{font-size:1.05em;color:#4c1d95;font-weight:600;margin-right:4px;}
-    .camera-select select{padding:10px 18px;font-size:1em;border-radius:10px;border:1px solid #c7d2fe;background:#f3f4f6;color:#312e81;min-width:110px;margin-right:2px;}
-    .camera-select .btn{margin:0 0 0 4px;padding:8px 22px;font-size:.95em;border-radius:20px;}
-    .camera-container{position:relative;display:inline-block;margin-bottom:30px;}
-    #webcam,#canvas{width:100%;max-width:500px;height:auto;border-radius:15px;box-shadow:0 10px 25px rgba(0,0,0,.2);background:#f3f4f6;}
+    .microorganism-icon {
+      width:60px;height:60px;object-fit:cover;vertical-align:middle;
+      margin-bottom:10px;border-radius:15px;
+      box-shadow:0 2px 8px rgba(60,50,100,0.09);
+    }
+    .microorganism-name {font-size:.98rem;font-weight:600;color:#4c1d95;}
+    .main-screen {display:none;}
+    .camera-select {margin-bottom:1.3vw;display:flex;justify-content:center;align-items:center;gap:10px;}
+    .camera-select label{font-size:1em;color:#4c1d95;font-weight:600;margin-right:4px;}
+    .camera-select select{padding:10px 18px;font-size:1em;border-radius:10px;border:1px solid #c7d2fe;background:#f3f4f6;color:#312e81;min-width:110px;}
+    .camera-select .btn{margin-left:4px;padding:8px 22px;font-size:.97em;border-radius:20px;}
+    .camera-container{position:relative;display:inline-block;margin-bottom:2vw;}
+    #webcam,#canvas{
+      width:90vw;max-width:500px;height:auto;border-radius:15px;
+      box-shadow:0 10px 25px rgba(0,0,0,.12);background:#f3f4f6;
+      margin:0 auto;
+    }
     #canvas{display:none;}
-    .controls{display:flex;flex-wrap:wrap;justify-content:center;gap:15px;margin-bottom:30px;}
-    .btn{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;border:none;padding:12px 24px;border-radius:25px;font-size:1rem;font-weight:600;cursor:pointer;transition:.3s;box-shadow:0 4px 15px rgba(102,126,234,.4);}
-    .btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(102,126,234,.6);}
+    .controls{display:flex;flex-wrap:wrap;justify-content:center;gap:1vw;margin-bottom:2vw;}
+    .btn{
+      background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+      color:white;border:none;padding:12px 24px;border-radius:25px;
+      font-size:1rem;font-weight:600;cursor:pointer;transition:.2s;
+      box-shadow:0 4px 15px rgba(102,126,234,.15);}
+    .btn:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(102,126,234,.23);}
     .btn:active{transform:translateY(0);}
     .btn:disabled{opacity:.6;cursor:not-allowed;transform:none;}
-    .btn-secondary{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);box-shadow:0 4px 15px rgba(245,158,11,.4);}
-    .btn-secondary:hover{box-shadow:0 6px 20px rgba(245,158,11,.6);}
+    .btn-secondary{
+      background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);
+      box-shadow:0 4px 15px rgba(245,158,11,.11);}
+    .btn-secondary:hover{box-shadow:0 7px 22px rgba(245,158,11,.18);}
     .file-input{display:none;}
-    .result-container{background:white;border-radius:15px;padding:25px;margin-top:20px;box-shadow:0 8px 16px rgba(0,0,0,.1);display:none;}
-    .result-title{font-size:1.5rem;font-weight:700;color:#4c1d95;margin-bottom:15px;}
-    .result-microorganism{font-size:2rem;margin:20px 0;}
-    .result-description{font-size:1.1rem;color:#6b7280;line-height:1.6;margin-bottom:20px;}
+    .result-container{background:white;border-radius:2vw;padding:2vw;margin-top:2vw;box-shadow:0 1vw 2vw rgba(0,0,0,.09);display:none;}
+    .result-title{font-size:clamp(1.3rem,2.3vw,1.6rem);font-weight:700;color:#4c1d95;margin-bottom:1vw;}
+    .result-microorganism{font-size:1.4rem;margin:2vw 0;display:flex;align-items:center;justify-content:center;gap:.5vw;}
+    .result-microorganism img{width:60px;height:60px;object-fit:cover;border-radius:15px;box-shadow:0 2px 8px rgba(60,50,100,0.09);}
+    .result-description{font-size:1.06rem;color:#6b7280;line-height:1.5;margin-bottom:1vw;}
     .confidence-bar{background:#e5e7eb;border-radius:10px;height:20px;margin:10px 0;overflow:hidden;}
     .confidence-fill{background:linear-gradient(90deg,#10b981,#059669);height:100%;border-radius:10px;transition:.5s;}
-    .confidence-text{font-size:.9rem;color:#6b7280;margin-top:5px;}
-    .loading{display:none;flex-direction:column;align-items:center;margin:20px 0;}
+    .confidence-text{font-size:.93rem;color:#6b7280;margin-top:4px;}
+    .loading{display:none;flex-direction:column;align-items:center;margin:1.7vw 0;}
     .spinner{width:40px;height:40px;border:4px solid #e5e7eb;border-top:4px solid #667eea;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:10px;}
     @keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
-    @media(max-width:768px){.main-title{font-size:2rem;}.container{padding:10px;}.start-screen,.main-screen{margin:10px;padding:20px;}.controls{flex-direction:column;align-items:center;}.btn{width:200px;}}
+    @media (max-width:700px){
+      .container{padding:2vw 2vw;}
+      .main-title{font-size:2.1rem;}
+      .result-microorganism img,.microorganism-icon{width:48px;height:48px;}
+      #webcam,#canvas{width:98vw;}
+    }
+    @media (max-width:500px){
+      .main-title{font-size:1.6rem;}
+      .result-title{font-size:1.07rem;}
+      .container{padding:1vw;}
+      .result-microorganism img,.microorganism-icon{width:36px;height:36px;}
+      .start-screen,.main-screen,.result-container{padding:2vw 1vw;}
+    }
   </style>
 </head>
 <body>
@@ -197,7 +243,7 @@ $("analyzeBtn").onclick=async()=>{
   let top=predictions[0],key=top.className,confidence=Math.round(top.probability*100);
   const org=microorganisms[key];
   $("resultMicroorganism").innerHTML=org
-    ? `<img src="${org.iconImg}" alt="${org.name}" style="width:48px;height:48px;vertical-align:middle;border-radius:10px;margin-right:8px;"> <strong>${org.name}</strong>`
+    ? `<img src="${org.iconImg}" alt="${org.name}" style="width:60px;height:60px;vertical-align:middle;border-radius:15px;margin-right:10px;box-shadow:0 2px 8px rgba(60,50,100,0.09);"> <strong>${org.name}</strong>`
     : key;
   $("resultDescription").textContent=org?org.description:'';
   $("confidenceFill").style.width=`${confidence}%`;
@@ -212,16 +258,12 @@ $("retryBtn").onclick=()=>{
 window.addEventListener('beforeunload', ()=>{
   if(webcamStream) webcamStream.getTracks().forEach(track=>track.stop());
 });
-
-// 저장: 미리보기(분석) 사진 + 대표 미생물 이미지를 카드 전체에 세로로 겹침
 $("saveResultBtn").onclick=()=>{
   const cardW=1181, cardH=1772, cardCanvas=document.createElement('canvas');
   cardCanvas.width=cardW; cardCanvas.height=cardH;
   const ctx=cardCanvas.getContext('2d');
   ctx.fillStyle="#fff";
   ctx.fillRect(0,0,cardW,cardH);
-
-  // 1. 미리보기(분석) 사진(카드 상단 일부)
   const img2 = new Image();
   img2.src = document.getElementById('canvas').toDataURL('image/png');
   img2.onload = function(){
@@ -234,8 +276,6 @@ $("saveResultBtn").onclick=()=>{
     const imgX = Math.round((cardW-imgW)/2);
     const imgY = 60;
     ctx.drawImage(img2, imgX, imgY, imgW, imgH);
-
-    // 2. 대표 미생물 이미지를 카드 전체 세로에 꽉차게(중앙정렬)
     let orgName = document.getElementById('resultMicroorganism').textContent.replace(/[^가-힣]/g,"")||"";
     let imgUrl = orgName ? "img/"+orgName+".jpg" : null;
     if(imgUrl){
@@ -253,7 +293,6 @@ $("saveResultBtn").onclick=()=>{
     } else {
       saveCard();
     }
-
     function saveCard(){
       cardCanvas.toBlob(function(blob){
         const a=document.createElement('a');
